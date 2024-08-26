@@ -3,7 +3,7 @@ import pandas as pd
 import yfinance as yf
 import ta
 
-# Define the forex pairs
+
 forex_pairs = [
     'EURUSD=X', 'USDJPY=X', 'GBPUSD=X',
     'AUDUSD=X', 'USDCAD=X', 'USDCHF=X',
@@ -17,7 +17,6 @@ forex_pairs = [
     'NZDCHF=X', 'USDINR=X'
 ]
 
-# Function to calculate RSI indication
 def indicator(df):
     indicate = []
     df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
@@ -31,7 +30,7 @@ def indicator(df):
             indicate.append('Neutral')
     return indicate
 
-# Function to process data and get indications
+
 def output(dataframe):
     Underbought = []
     Overbought = []
@@ -42,7 +41,6 @@ def output(dataframe):
             Overbought.append(i)
     return Underbought, Overbought
 
-# Download data for different intervals
 results_5m = {}
 results_15m = {}
 results_1h = {}
@@ -73,23 +71,21 @@ for pair in forex_pairs:
     except Exception as e:
         st.error(f"Error downloading data for {pair}: {e}")
 
-# Process data for each interval
 Underbought_5m, Overbought_5m = output(results_5m)
 Underbought_15m, Overbought_15m = output(results_15m)
 Underbought_1h, Overbought_1h = output(results_1h)
 Underbought_1d, Overbought_1d = output(results_1d)
 
-# Streamlit app
 st.title('Forex RSI Analysis')
 
-# Load CSS
+
 with open('styles.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Prompt for interval selection
+
 st.markdown("<div class='header'>Choose your intervals to combine:</div>", unsafe_allow_html=True)
 
-# Checkboxes for intervals
+
 show_5m = st.checkbox('Show 5 Minute Interval')
 show_15m = st.checkbox('Show 15 Minute Interval')
 show_1h = st.checkbox('Show 1 Hour Interval')
@@ -105,7 +101,7 @@ if show_1h:
 if show_1d:
     selected_intervals.append('1d')
 
-# Display results in horizontal manner
+
 if selected_intervals:
     cols = st.columns(len(selected_intervals))
 
