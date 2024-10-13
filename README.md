@@ -6,3 +6,5 @@ This project is a Forex trading tool built using Streamlit that helps traders id
 Pairs with RSI values below 30 are marked as underbought (potential buy signals), while those above 70 are overbought (potential sell signals). Traders can select specific intervals for analysis, and the app displays the underbought and overbought pairs accordingly. If multiple intervals are chosen, the app shows combined results to highlight forex pairs meeting the criteria across all selected timeframes.
 
 This screener simplifies technical analysis for forex traders by automating RSI calculation and presenting easy-to-interpret signals for informed trading decisions.
+
+WebApp link - https://rsi-screener.streamlit.app/
