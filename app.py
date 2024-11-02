@@ -18,7 +18,7 @@ forex_pairs = [
 
 # Function to calculate RSI and get indications
 def indicator(df):
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi().values.ravel()  # Flatten the array
     df.dropna(inplace=True)
     indicate = ['Overbought' if rsi > 70 else 'Underbought' if rsi < 30 else 'Neutral' for rsi in df['RSI']]
     return indicate
