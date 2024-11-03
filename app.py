@@ -18,17 +18,19 @@ forex_pairs = [
 
 # Function to calculate RSI and get indications
 def indicator(df):
-    indicate = []
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi().to_frame().squeeze()  # Ensure RSI is 1D
     df.dropna(inplace=True)
-    for i in range(len(df['RSI'])):
-        if df['RSI'].iloc[i] > 70:
+    
+    indicate = []
+    for rsi_value in df['RSI']:
+        if rsi_value > 70:
             indicate.append('Overbought')
-        elif df['RSI'].iloc[i] < 30:
+        elif rsi_value < 30:
             indicate.append('Underbought')
         else:
             indicate.append('Neutral')
     return indicate
+
 
 # Function to categorize underbought and overbought
 def output(dataframe):
