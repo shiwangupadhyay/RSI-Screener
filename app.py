@@ -36,10 +36,14 @@ def output(dataframe):
     Overbought = []
     for i in forex_pairs:
         clean_pair = i.replace('=X', '')  # Remove '=X' from the pair name
-        if dataframe[i]['indication'].iloc[-1] == 'Underbought':
-            Underbought.append(clean_pair)
-        elif dataframe[i]['indication'].iloc[-1] == 'Overbought':
-            Overbought.append(clean_pair)
+        # Check if the pair's data exists in the dictionary
+        if i in dataframe:
+            # Check if 'indication' column is present and has at least one entry
+            if 'indication' in dataframe[i].columns and not dataframe[i]['indication'].empty:
+                if dataframe[i]['indication'].iloc[-1] == 'Underbought':
+                    Underbought.append(clean_pair)
+                elif dataframe[i]['indication'].iloc[-1] == 'Overbought':
+                    Overbought.append(clean_pair)
     return Underbought, Overbought
 
 # Initialize session state to store downloaded data
