@@ -8,3 +8,5 @@ Pairs with RSI values below 30 are marked as underbought (potential buy signals)
 This screener simplifies technical analysis for forex traders by automating RSI calculation and presenting easy-to-interpret signals for informed trading decisions.
 
 WebApp link - https://rsi-screener.streamlit.app/
+### Author
+Shiwang Upadhyay
