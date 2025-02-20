@@ -30,15 +30,11 @@ def output(dataframe):
     Overbought = []
     for i in forex_pairs:
         clean_pair = i.replace('=X', '')  # Remove '=X' from the pair name
-        if i in dataframe and not dataframe[i].empty:  # Check if data exists
-            if 'indication' in dataframe[i].columns:  # Ensure 'indication' column exists
-                last_indication = dataframe[i]['indication'].iloc[-1]  # Get last value safely
-                if last_indication == 'Underbought':
-                    Underbought.append(clean_pair)
-                elif last_indication == 'Overbought':
-                    Overbought.append(clean_pair)
+        if dataframe[i]['indication'].iloc[-1] == 'Underbought':
+            Underbought.append(clean_pair)
+        elif dataframe[i]['indication'].iloc[-1] == 'Overbought':
+            Overbought.append(clean_pair)
     return Underbought, Overbought
-
 
 # Initialize session state to store downloaded data
 if 'results_5m' not in st.session_state:
@@ -47,62 +43,46 @@ if 'results_5m' not in st.session_state:
     st.session_state.results_1h = {}
     st.session_state.results_1d = {}
 
-# Download and process forex data
 for pair in forex_pairs:
     try:
         data_5m = yf.download(pair, period='5d', interval='5m')
-        if not data_5m.empty:  # Ensure data is not empty
-            if data_5m.index.tz is None:
-                data_5m.index = data_5m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-            else:
-                data_5m.index = data_5m.index.tz_convert('Asia/Kolkata')
+        if data_5m.index.tz is None:
+            data_5m.index = data_5m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
         else:
-            st.warning(f"No data available for {pair} (5m). Skipping...")
+            data_5m.index = data_5m.index.tz_convert('Asia/Kolkata')
 
         data_15m = yf.download(pair, period='5d', interval='15m')
-        if not data_15m.empty:
-            if data_15m.index.tz is None:
-                data_15m.index = data_15m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-            else:
-                data_15m.index = data_15m.index.tz_convert('Asia/Kolkata')
+        if data_15m.index.tz is None:
+            data_15m.index = data_15m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
         else:
-            st.warning(f"No data available for {pair} (15m). Skipping...")
+            data_15m.index = data_15m.index.tz_convert('Asia/Kolkata')
 
         data_1h = yf.download(pair, period='1mo', interval='1h')
-        if not data_1h.empty:
-            if data_1h.index.tz is None:
-                data_1h.index = data_1h.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-            else:
-                data_1h.index = data_1h.index.tz_convert('Asia/Kolkata')
+        if data_1h.index.tz is None:
+            data_1h.index = data_1h.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
         else:
-            st.warning(f"No data available for {pair} (1h). Skipping...")
+            data_1h.index = data_1h.index.tz_convert('Asia/Kolkata')
 
         data_1d = yf.download(pair, period='6mo', interval='1d')
-        if not data_1d.empty:
-            if data_1d.index.tz is None:
-                data_1d.index = data_1d.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-            else:
-                data_1d.index = data_1d.index.tz_convert('Asia/Kolkata')
+        if data_1d.index.tz is None:
+            data_1d.index = data_1d.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
         else:
-            st.warning(f"No data available for {pair} (1d). Skipping...")
+            data_1d.index = data_1d.index.tz_convert('Asia/Kolkata')
 
-        # Apply RSI only if data is available
-        if not data_5m.empty:
-            data_5m['indication'] = indicator(data_5m)
-            st.session_state.results_5m[pair] = data_5m
-        if not data_15m.empty:
-            data_15m['indication'] = indicator(data_15m)
-            st.session_state.results_15m[pair] = data_15m
-        if not data_1h.empty:
-            data_1h['indication'] = indicator(data_1h)
-            st.session_state.results_1h[pair] = data_1h
-        if not data_1d.empty:
-            data_1d['indication'] = indicator(data_1d)
-            st.session_state.results_1d[pair] = data_1d
+        # Apply RSI indicators
+        data_5m['indication'] = indicator(data_5m)
+        data_15m['indication'] = indicator(data_15m)
+        data_1h['indication'] = indicator(data_1h)
+        data_1d['indication'] = indicator(data_1d)
+
+        # Store results in session state
+        st.session_state.results_5m[pair] = data_5m
+        st.session_state.results_15m[pair] = data_15m
+        st.session_state.results_1h[pair] = data_1h
+        st.session_state.results_1d[pair] = data_1d
 
     except Exception as e:
         st.error(f"Error downloading data for {pair}: {e}")
-
 
 # Get underbought and overbought results for each interval
 Underbought_5m, Overbought_5m = output(st.session_state.results_5m)
