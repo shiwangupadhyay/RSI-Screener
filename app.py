@@ -35,7 +35,7 @@ def output(dataframe):
     Underbought = []
     Overbought = []
     for i in forex_pairs:
-        if i in dataframe:
+        if i in dataframe and not dataframe[i].empty:
             clean_pair = i.replace('=X', '')  # Remove '=X' from the pair name
             if dataframe[i]['indication'].iloc[-1] == 'Underbought':
                 Underbought.append(clean_pair)
