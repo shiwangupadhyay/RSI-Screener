@@ -1,153 +1,71 @@
 import streamlit as st
-import pandas as pd
 import yfinance as yf
-import ta
+import pandas as pd
 
-forex_pairs = [
-    'EURUSD=X', 'USDJPY=X', 'GBPUSD=X',
-    'AUDUSD=X', 'USDCAD=X', 'USDCHF=X',
-    'NZDUSD=X', 'EURJPY=X', 'GBPJPY=X',
-    'EURGBP=X', 'AUDJPY=X', 'EURAUD=X',
-    'EURCHF=X', 'AUDNZD=X', 'NZDJPY=X',
-    'GBPAUD=X', 'GBPCAD=X', 'EURNZD=X',
-    'AUDCAD=X', 'GBPCHF=X', 'AUDCHF=X',
-    'EURCAD=X', 'CADJPY=X', 'GBPNZD=X',
-    'CADCHF=X', 'CHFJPY=X', 'NZDCAD=X',
-    'NZDCHF=X', 'USDINR=X'
-]
-
-# Function to calculate RSI and get indications
-def indicator(df):
-    indicate = []
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
-    df.dropna(inplace=True)
-    for i in range(len(df['RSI'])):
-        if df['RSI'].iloc[i] > 70:
-            indicate.append('Overbought')
-        elif df['RSI'].iloc[i] < 30:
-            indicate.append('Underbought')
-        else:
-            indicate.append('Neutral')
-    return indicate
-
-# Function to categorize underbought and overbought
-def output(dataframe):
-    Underbought = []
-    Overbought = []
-    for i in forex_pairs:
-        if i in dataframe and not dataframe[i].empty:
-            clean_pair = i.replace('=X', '')  # Remove '=X' from the pair name
-            if dataframe[i]['indication'].iloc[-1] == 'Underbought':
-                Underbought.append(clean_pair)
-            elif dataframe[i]['indication'].iloc[-1] == 'Overbought':
-                Overbought.append(clean_pair)
-    return Underbought, Overbought
-
-# Function to download and process data for a forex pair
-def download_and_process(pair, period, interval):
-    try:
-        data = yf.download(pair, period=period, interval=interval)
-        if data.empty:
-            raise ValueError(f"No data available for {pair}")
-        
-        if data.index.tz is None:  # If not timezone-aware
-            data.index = data.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-        else:
-            data.index = data.index.tz_convert('Asia/Kolkata')
-
-        data['indication'] = indicator(data)
-        return data
-    except Exception as e:
-        st.error(f"Error downloading data for {pair}: {e}")
+# Function to compute RSI indication (Replace with your logic)
+def indicator(data):
+    if 'Close' not in data.columns:
         return None
+    data['RSI'] = 100 - (100 / (1 + data['Close'].pct_change().rolling(14).mean()))
+    return data['RSI'].apply(lambda x: 'Overbought' if x > 70 else 'Oversold' if x < 30 else 'Neutral')
 
-# Initialize session state to store downloaded data
+# Initialize session state if not already set
 if 'results_5m' not in st.session_state:
     st.session_state.results_5m = {}
+if 'results_15m' not in st.session_state:
     st.session_state.results_15m = {}
+if 'results_1h' not in st.session_state:
     st.session_state.results_1h = {}
+if 'results_1d' not in st.session_state:
     st.session_state.results_1d = {}
-    for pair in forex_pairs:
-        st.session_state.results_5m[pair] = download_and_process(pair, '5d', '5m')
-        st.session_state.results_15m[pair] = download_and_process(pair, '5d', '15m')
-        st.session_state.results_1h[pair] = download_and_process(pair, '1mo', '1h')
-        st.session_state.results_1d[pair] = download_and_process(pair, '6mo', '1d')
 
-# Get underbought and overbought results for each interval
-Underbought_5m, Overbought_5m = output(st.session_state.results_5m)
-Underbought_15m, Overbought_15m = output(st.session_state.results_15m)
-Underbought_1h, Overbought_1h = output(st.session_state.results_1h)
-Underbought_1d, Overbought_1d = output(st.session_state.results_1d)
+# Forex pairs to track
+forex_pairs = [
+    "EURUSD=X", "USDJPY=X", "GBPUSD=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X",
+    "EURJPY=X", "GBPJPY=X", "EURGBP=X", "AUDJPY=X", "EURAUD=X", "EURCHF=X", "AUDNZD=X",
+    "NZDJPY=X", "GBPAUD=X", "GBPCAD=X", "EURNZD=X", "AUDCAD=X", "GBPCHF=X", "AUDCHF=X",
+    "EURCAD=X", "CADJPY=X", "GBPNZD=X", "CADCHF=X", "CHFJPY=X", "NZDCAD=X", "NZDCHF=X",
+    "USDINR=X"
+]
 
-st.title('RSI Screener for FOREX pairs')
+# Streamlit App UI
+st.title("Forex Screener: RSI Overbought & Oversold Levels")
 
-# Styling
-with open('styles.css') as f:
-    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+for pair in forex_pairs:
+    try:
+        # Download data for different timeframes
+        data_5m = yf.download(pair, period='5d', interval='5m')
+        data_15m = yf.download(pair, period='5d', interval='15m')
+        data_1h = yf.download(pair, period='1mo', interval='1h')
+        data_1d = yf.download(pair, period='6mo', interval='1d')
 
-st.markdown("<div class='header'>Choose your intervals to combine:</div>", unsafe_allow_html=True)
+        # Ensure datetime index is timezone aware
+        for data in [data_5m, data_15m, data_1h, data_1d]:
+            if not hasattr(data.index, "tz"):
+                data.index = pd.to_datetime(data.index).tz_localize("UTC").tz_convert("Asia/Kolkata")
+            else:
+                data.index = data.index.tz_convert("Asia/Kolkata")
 
-# Initialize session state for checkboxes
-if 'show_5m' not in st.session_state:
-    st.session_state.show_5m = False
-if 'show_15m' not in st.session_state:
-    st.session_state.show_15m = False
-if 'show_1h' not in st.session_state:
-    st.session_state.show_1h = False
-if 'show_1d' not in st.session_state:
-    st.session_state.show_1d = False
+        # Apply RSI indicator
+        data_5m['indication'] = indicator(data_5m)
+        data_15m['indication'] = indicator(data_15m)
+        data_1h['indication'] = indicator(data_1h)
+        data_1d['indication'] = indicator(data_1d)
 
-# Checkbox states controlled by session state
-st.session_state.show_5m = st.checkbox('Show 5 Minute Interval', value=st.session_state.show_5m)
-st.session_state.show_15m = st.checkbox('Show 15 Minute Interval', value=st.session_state.show_15m)
-st.session_state.show_1h = st.checkbox('Show 1 Hour Interval', value=st.session_state.show_1h)
-st.session_state.show_1d = st.checkbox('Show 1 Day Interval', value=st.session_state.show_1d)
+        # Store results in session state
+        st.session_state.results_5m[pair] = data_5m
+        st.session_state.results_15m[pair] = data_15m
+        st.session_state.results_1h[pair] = data_1h
+        st.session_state.results_1d[pair] = data_1d
 
-# Process selected intervals
-selected_intervals = []
-if st.session_state.show_5m:
-    selected_intervals.append('5m')
-if st.session_state.show_15m:
-    selected_intervals.append('15m')
-if st.session_state.show_1h:
-    selected_intervals.append('1h')
-if st.session_state.show_1d:
-    selected_intervals.append('1d')
+    except Exception as e:
+        st.error(f"Error downloading data for {pair}: {e}")
 
-if selected_intervals:
-    cols = st.columns(len(selected_intervals))
+# Display results in Streamlit
+st.header("Forex Pairs with RSI Indicators")
+timeframe = st.selectbox("Select Timeframe", ["5m", "15m", "1h", "1d"])
+selected_results = getattr(st.session_state, f"results_{timeframe}", {})
 
-    interval_data = {
-        '5m': (Underbought_5m, Overbought_5m),
-        '15m': (Underbought_15m, Overbought_15m),
-        '1h': (Underbought_1h, Overbought_1h),
-        '1d': (Underbought_1d, Overbought_1d)
-    }
-
-    # Combine data for multiple intervals
-    combined_underbought = set(interval_data[selected_intervals[0]][0])
-    combined_overbought = set(interval_data[selected_intervals[0]][1])
-    for interval in selected_intervals[1:]:
-        combined_underbought.intersection_update(interval_data[interval][0])
-        combined_overbought.intersection_update(interval_data[interval][1])
-
-    # Display results for each interval
-    for idx, interval in enumerate(selected_intervals):
-        with cols[idx]:
-            st.markdown(f"<div class='box'><div class='header'>{interval.upper()} INTERVAL</div>", unsafe_allow_html=True)
-            st.markdown("<div class='content'>", unsafe_allow_html=True)
-            st.write("**RSI < 30 (Underbought):**")
-            st.write(", ".join(interval_data[interval][0]))
-            st.write("**RSI > 70 (Overbought):**")
-            st.write(", ".join(interval_data[interval][1]))
-            st.markdown("</div></div>", unsafe_allow_html=True)
-
-    # Display combined results
-    if len(selected_intervals) > 1:
-        st.markdown("<div class='box'><div class='header'>COMBINED RESULTS</div>", unsafe_allow_html=True)
-        st.markdown("<div class='content'>", unsafe_allow_html=True)
-        st.write("**RSI < 30 (Underbought):**")
-        st.write(", ".join(combined_underbought))
-        st.write("**RSI > 70 (Overbought):**")
-        st.write(", ".join(combined_overbought))
-        st.markdown("</div></div>", unsafe_allow_html=True)
+for pair, df in selected_results.items():
+    st.subheader(pair)
+    st.dataframe(df.tail(5))  # Show last 5 rows of data for each pair
