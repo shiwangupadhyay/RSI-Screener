@@ -43,29 +43,30 @@ if 'results_5m' not in st.session_state:
     st.session_state.results_1h = {}
     st.session_state.results_1d = {}
 
+# Download and process forex data
 for pair in forex_pairs:
     try:
         data_5m = yf.download(pair, period='5d', interval='5m')
         if data_5m.index.tz is None:
-            data_5m.index = data_5m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+            data_5m.index = data_5m.index.tz_localize('UTC', errors='coerce').tz_convert('Asia/Kolkata')
         else:
             data_5m.index = data_5m.index.tz_convert('Asia/Kolkata')
 
         data_15m = yf.download(pair, period='5d', interval='15m')
         if data_15m.index.tz is None:
-            data_15m.index = data_15m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+            data_15m.index = data_15m.index.tz_localize('UTC', errors='coerce').tz_convert('Asia/Kolkata')
         else:
             data_15m.index = data_15m.index.tz_convert('Asia/Kolkata')
 
         data_1h = yf.download(pair, period='1mo', interval='1h')
         if data_1h.index.tz is None:
-            data_1h.index = data_1h.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+            data_1h.index = data_1h.index.tz_localize('UTC', errors='coerce').tz_convert('Asia/Kolkata')
         else:
             data_1h.index = data_1h.index.tz_convert('Asia/Kolkata')
 
         data_1d = yf.download(pair, period='6mo', interval='1d')
         if data_1d.index.tz is None:
-            data_1d.index = data_1d.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+            data_1d.index = data_1d.index.tz_localize('UTC', errors='coerce').tz_convert('Asia/Kolkata')
         else:
             data_1d.index = data_1d.index.tz_convert('Asia/Kolkata')
 
