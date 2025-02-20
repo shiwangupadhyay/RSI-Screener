@@ -88,7 +88,6 @@ if 'results_5m' not in st.session_state:
         except Exception as e:
             st.error(f"Error downloading data for {pair}: {e}")
 
-
 # Get underbought and overbought results for each interval
 Underbought_5m, Overbought_5m = output(st.session_state.results_5m)
 Underbought_15m, Overbought_15m = output(st.session_state.results_15m)
