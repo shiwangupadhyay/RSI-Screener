@@ -10,138 +10,107 @@ forex_pairs = [
     'EURCAD=X', 'CADJPY=X', 'GBPNZD=X', 'CADCHF=X', 'CHFJPY=X', 'NZDCAD=X', 'NZDCHF=X', 'USDINR=X'
 ]
 
-# Function to calculate RSI and get indications
+@st.cache_data
+def download_data(pair, period, interval):
+    try:
+        data = yf.download(pair, period=period, interval=interval)
+        if data.empty:
+            st.warning(f"No data found for {pair} ({interval} interval).")
+            return None
+
+        if data.index.tz is None:
+            data.index = data.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+        else:
+            data.index = data.index.tz_convert('Asia/Kolkata')
+        return data
+    except Exception as e:
+        st.error(f"Error downloading data for {pair} ({interval} interval): {type(e).__name__}: {e}")
+        return None
+
 def indicator(df):
+    if df is None or df.empty or 'Close' not in df.columns:
+        return []
     indicate = []
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+    close_prices = df['Close'].squeeze()
+    rsi_series = ta.momentum.RSIIndicator(close_prices, window=14).rsi()
+    df['RSI'] = rsi_series.squeeze()
     df.dropna(inplace=True)
-    for i in range(len(df['RSI'])):
-        if df['RSI'].iloc[i] > 70:
+
+    for value in df['RSI']:
+        if value > 70:
             indicate.append('Overbought')
-        elif df['RSI'].iloc[i] < 30:
+        elif value < 30:
             indicate.append('Underbought')
         else:
             indicate.append('Neutral')
+
     return indicate
 
-# Function to categorize underbought and overbought
-def output(dataframe):
+def output(data_dict, interval):
     Underbought = []
     Overbought = []
-    for i in forex_pairs:
-        clean_pair = i.replace('=X', '')  # Remove '=X' from the pair name
-        if dataframe[i]['indication'].iloc[-1] == 'Underbought':
-            Underbought.append(clean_pair)
-        elif dataframe[i]['indication'].iloc[-1] == 'Overbought':
-            Overbought.append(clean_pair)
+    for pair in forex_pairs:
+        key = f"{pair}_{interval}"
+        if key in data_dict and data_dict[key] is not None and not data_dict[key].empty and 'indication' in data_dict[key].columns:
+            if data_dict[key]['indication'].iloc[-1] == 'Underbought':
+                Underbought.append(pair.replace('=X', ''))
+            elif data_dict[key]['indication'].iloc[-1] == 'Overbought':
+                Overbought.append(pair.replace('=X', ''))
     return Underbought, Overbought
 
-# Initialize session state to store downloaded data
-if 'results_5m' not in st.session_state:
-    st.session_state.results_5m = {}
-    st.session_state.results_15m = {}
-    st.session_state.results_1h = {}
-    st.session_state.results_1d = {}
+
+if 'data' not in st.session_state:
+    st.session_state.data = {}
 
 for pair in forex_pairs:
-    try:
-        data_5m = yf.download(pair, period='5d', interval='5m')
-        if data_5m.index.tz is None:
-            data_5m.index = data_5m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-        else:
-            data_5m.index = data_5m.index.tz_convert('Asia/Kolkata')
+    for interval in ['5m', '15m', '1h', '1d']:
+        key = f"{pair}_{interval}"
+        if key not in st.session_state.data:
+            if interval in ('5m', '15m'):
+                period = '5d'
+            elif interval == '1h':
+                period = '1mo'
+            else:
+                period = '6mo'
+            st.session_state.data[key] = download_data(pair, period, interval)
+            if st.session_state.data[key] is not None and 'Close' in st.session_state.data[key].columns:
+                st.session_state.data[key]['indication'] = indicator(st.session_state.data[key])
 
-        data_15m = yf.download(pair, period='5d', interval='15m')
-        if data_15m.index.tz is None:
-            data_15m.index = data_15m.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-        else:
-            data_15m.index = data_15m.index.tz_convert('Asia/Kolkata')
-
-        data_1h = yf.download(pair, period='1mo', interval='1h')
-        if data_1h.index.tz is None:
-            data_1h.index = data_1h.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-        else:
-            data_1h.index = data_1h.index.tz_convert('Asia/Kolkata')
-
-        data_1d = yf.download(pair, period='6mo', interval='1d')
-        if data_1d.index.tz is None:
-            data_1d.index = data_1d.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
-        else:
-            data_1d.index = data_1d.index.tz_convert('Asia/Kolkata')
-
-        # Apply RSI indicators
-        data_5m['indication'] = indicator(data_5m)
-        data_15m['indication'] = indicator(data_15m)
-        data_1h['indication'] = indicator(data_1h)
-        data_1d['indication'] = indicator(data_1d)
-
-        # Store results in session state
-        st.session_state.results_5m[pair] = data_5m
-        st.session_state.results_15m[pair] = data_15m
-        st.session_state.results_1h[pair] = data_1h
-        st.session_state.results_1d[pair] = data_1d
-
-    except Exception as e:
-        st.error(f"Error downloading data for {pair}: {e}")
-
-# Get underbought and overbought results for each interval
-Underbought_5m, Overbought_5m = output(st.session_state.results_5m)
-Underbought_15m, Overbought_15m = output(st.session_state.results_15m)
-Underbought_1h, Overbought_1h = output(st.session_state.results_1h)
-Underbought_1d, Overbought_1d = output(st.session_state.results_1d)
 
 st.title('RSI Screener for FOREX pairs')
 
-# Styling
-with open('styles.css') as f:
+# You'll need a styles.css file in the same directory as your script
+with open('styles.css') as f:  
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 st.markdown("<div class='header'>Choose your intervals to combine:</div>", unsafe_allow_html=True)
 
-# Initialize session state for checkboxes
-if 'show_5m' not in st.session_state:
-    st.session_state.show_5m = False
-if 'show_15m' not in st.session_state:
-    st.session_state.show_15m = False
-if 'show_1h' not in st.session_state:
-    st.session_state.show_1h = False
-if 'show_1d' not in st.session_state:
-    st.session_state.show_1d = False
+for interval in ['5m', '15m', '1h', '1d']:
+    if f'show_{interval}' not in st.session_state:
+        st.session_state[f'show_{interval}'] = False
 
-# Checkbox states controlled by session state
-st.session_state.show_5m = st.checkbox('Show 5 Minute Interval', value=st.session_state.show_5m)
-st.session_state.show_15m = st.checkbox('Show 15 Minute Interval', value=st.session_state.show_15m)
-st.session_state.show_1h = st.checkbox('Show 1 Hour Interval', value=st.session_state.show_1h)
-st.session_state.show_1d = st.checkbox('Show 1 Day Interval', value=st.session_state.show_1d)
+for interval in ['5m', '15m', '1h', '1d']:
+    st.session_state[f'show_{interval}'] = st.checkbox(f'Show {interval.upper()} Interval', value=st.session_state[f'show_{interval}'])
 
-# Process selected intervals
-selected_intervals = []
-if st.session_state.show_5m:
-    selected_intervals.append('5m')
-if st.session_state.show_15m:
-    selected_intervals.append('15m')
-if st.session_state.show_1h:
-    selected_intervals.append('1h')
-if st.session_state.show_1d:
-    selected_intervals.append('1d')
+selected_intervals = [interval for interval in ['5m', '15m', '1h', '1d'] if st.session_state[f'show_{interval}']]
 
 if selected_intervals:
     cols = st.columns(len(selected_intervals))
-    interval_data = {
-        '5m': (Underbought_5m, Overbought_5m),
-        '15m': (Underbought_15m, Overbought_15m),
-        '1h': (Underbought_1h, Overbought_1h),
-        '1d': (Underbought_1d, Overbought_1d)
-    }
+    interval_data = {}
+    for interval in ['5m', '15m', '1h', '1d']:
+        interval_data[interval] = output(st.session_state.data, interval)
 
-    # Combine data for multiple intervals
-    combined_underbought = set(interval_data[selected_intervals[0]][0])
-    combined_overbought = set(interval_data[selected_intervals[0]][1])
-    for interval in selected_intervals[1:]:
-        combined_underbought.intersection_update(interval_data[interval][0])
-        combined_overbought.intersection_update(interval_data[interval][1])
+    combined_underbought = set()
+    combined_overbought = set()
 
-    # Display results for each interval
+    if selected_intervals:
+        combined_underbought = set(interval_data[selected_intervals[0]][0])
+        combined_overbought = set(interval_data[selected_intervals[0]][1])
+
+        for interval in selected_intervals[1:]:
+            combined_underbought.intersection_update(interval_data[interval][0])
+            combined_overbought.intersection_update(interval_data[interval][1])
+
     for idx, interval in enumerate(selected_intervals):
         with cols[idx]:
             st.markdown(f"<div class='box'><div class='header'>{interval.upper()} INTERVAL</div>", unsafe_allow_html=True)
@@ -152,7 +121,6 @@ if selected_intervals:
             st.write(", ".join(interval_data[interval][1]))
             st.markdown("</div></div>", unsafe_allow_html=True)
 
-    # Display combined results
     if len(selected_intervals) > 1:
         st.markdown("<div class='box'><div class='header'>COMBINED RESULTS</div>", unsafe_allow_html=True)
         st.markdown("<div class='content'>", unsafe_allow_html=True)
